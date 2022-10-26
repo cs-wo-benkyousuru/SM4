@@ -5,13 +5,12 @@ using namespace std;
 
 using u8 = unsigned char;
 using u32 = unsigned int;
-// union u32
-// {
-//     u8 u8s[4];
-//     unsigned int raw;
-//     u32(unsigned int _x) : raw(_x){} 
-//     u32(){}
-// };
+void encrypt(u32(&text)[4], const u32(&key)[4]);
+u32 F(u32(&input)[4], u32 roundKey);
+u32 T(u32 input, u32(*L)(u32));
+u32 Tao(u32 input);
+u32 L1(u32 input);
+u32 L2(u32 input);
 
 vector<vector<u8>> SBox = {
     {0xd6, 0x90, 0xe9, 0xfe, 0xcc, 0xe1, 0x3d, 0xb7, 0x16, 0xb6, 0x14, 0xc2, 0x28, 0xfb, 0x2c, 0x05},
@@ -32,7 +31,7 @@ vector<vector<u8>> SBox = {
     {0x18, 0xf0, 0x7d, 0xec, 0x3a, 0xdc, 0x4d, 0x20, 0x79, 0xee, 0x5f, 0x3e, 0xd7, 0xcb, 0x39, 0x48}
 };
 
-vector<u32> FK = {0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc};
+vector<u32> FK = { 0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc };
 vector<u32> CK = {
     0x00070e15, 0x1c232a31, 0x383f464d, 0x545b6269,
     0x70777e85, 0x8c939aa1, 0xa8afb6bd, 0xc4cbd2d9,
@@ -44,7 +43,24 @@ vector<u32> CK = {
     0x10171e25, 0x2c333a41, 0x484f565d, 0x646b7279
 };
 
-u32 F(u32 (&input)[4], u32 roundKey)
+void encrypt(u32(&text)[4], const u32(&key)[4])
+{
+    vector<u32> X = { text[0], text[1], text[2], text[3] };
+    vector<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
+    for (int i = 0; i < 32; ++i)
+    {
+        auto rK = K[i] ^ T(K[i + 1] ^ K[i + 2] ^ K[i + 3] ^ CK[i], L2);
+        K.push_back(rK);
+        u32 input4F[4] = { X[i], X[i + 1], X[i + 2], X[i + 3] };
+        X.push_back(F(input4F, rK));
+    }
+    text[0] = X[35];
+    text[1] = X[34];
+    text[2] = X[33];
+    text[3] = X[32];
+}
+
+u32 F(u32(&input)[4], u32 roundKey)
 {
     return input[0] ^ T(input[1] ^ input[2] ^ input[3] ^ roundKey, L1);
 }
@@ -57,14 +73,15 @@ u32 T(u32 input, u32(*L)(u32))
 u32 Tao(u32 input)
 {
     u32 output;
-    u8 A[4] = {input & 0xff, (input >> 8) & 0xff, (input >> 16) & 0xff, input >> 24};
-    for(int i = 0; i < 4; ++i)
+    //u8 A[4] = { input & 0xff, (input >> 8) & 0xff, (input >> 16) & 0xff, input >> 24 };
+    u8* A = reinterpret_cast<u8*>(&input);
+    for (int i = 0; i < 4; ++i)
     {
         auto low8 = A[i] & 0x0f;
         auto high8 = A[i] >> 4;
         A[i] = SBox[high8][low8];
     }
-    output = (u32)A[0] | ((u32)A[1] << 8) | ((u32)A[2] << 16) | ((u32)A[3] << 24);
+    output = *(reinterpret_cast<u32*>(A));
     return output;
 }
 
@@ -72,9 +89,9 @@ u32 L1(u32 input)
 {
     u32 output;
     auto rotateLeft = [](unsigned int val, int size)->unsigned int
-    { 
-        unsigned int res = val << size; 
-        res |= val >> (32 - size); 
+    {
+        unsigned int res = val << size;
+        res |= val >> (32 - size);
         return res;
     };
     output = input ^ (rotateLeft(input, 2)) ^ (rotateLeft(input, 10)) ^ (rotateLeft(input, 18)) ^ (rotateLeft(input, 24));
@@ -85,9 +102,9 @@ u32 L2(u32 input)
 {
     u32 output;
     auto rotateLeft = [](unsigned int val, int size)->unsigned int
-    { 
-        unsigned int res = val << size; 
-        res |= val >> (32 - size); 
+    {
+        unsigned int res = val << size;
+        res |= val >> (32 - size);
         return res;
     };
     output = input ^ (rotateLeft(input, 13)) ^ (rotateLeft(input, 23));
@@ -96,7 +113,13 @@ u32 L2(u32 input)
 
 int main()
 {
-    u32 array[4] = {1,2,3,4};
-    u32 x = 9;
-    F(array, x);
+    u32 array[4] = { 0x01234567,0x89abcdef,0xfedcba98,0x76543210 };
+    u32 x[4] = { 0x01234567,0x89abcdef,0xfedcba98,0x76543210 };
+    encrypt(array, x);
+    for (auto i : array)
+    {
+        printf("%x ", i);
+    }
+    cout << endl;
+    return 0;
 }
