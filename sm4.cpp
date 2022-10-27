@@ -1,18 +1,16 @@
 #include <iostream>
-#include <vector>
-
-using namespace std;
+#include <deque>
 
 using u8 = unsigned char;
 using u32 = unsigned int;
-void encrypt(u32(&text)[4], const u32(&key)[4]);
 u32 F(u32(&input)[4], u32 roundKey);
 u32 T(u32 input, u32(*L)(u32));
 u32 Tao(u32 input);
 u32 L1(u32 input);
 u32 L2(u32 input);
+void SM4(u32(&text)[4], const u32(&key)[4], bool encry);
 
-vector<vector<u8>> SBox = {
+std::deque<std::deque<u8>> SBox = {
     {0xd6, 0x90, 0xe9, 0xfe, 0xcc, 0xe1, 0x3d, 0xb7, 0x16, 0xb6, 0x14, 0xc2, 0x28, 0xfb, 0x2c, 0x05},
     {0x2b, 0x67, 0x9a, 0x76, 0x2a, 0xbe, 0x04, 0xc3, 0xaa, 0x44, 0x13, 0x26, 0x49, 0x86, 0x06, 0x99},
     {0x9c, 0x42, 0x50, 0xf4, 0x91, 0xef, 0x98, 0x7a, 0x33, 0x54, 0x0b, 0x43, 0xed, 0xcf, 0xac, 0x62},
@@ -30,8 +28,8 @@ vector<vector<u8>> SBox = {
     {0x89, 0x69, 0x97, 0x4a, 0x0c, 0x96, 0x77, 0x7e, 0x65, 0xb9, 0xf1, 0x09, 0xc5, 0x6e, 0xc6, 0x84},
     {0x18, 0xf0, 0x7d, 0xec, 0x3a, 0xdc, 0x4d, 0x20, 0x79, 0xee, 0x5f, 0x3e, 0xd7, 0xcb, 0x39, 0x48} };
 
-vector<u32> FK = { 0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc };
-vector<u32> CK = {
+std::deque<u32> FK = { 0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc };
+std::deque<u32> CK = {
     0x00070e15, 0x1c232a31, 0x383f464d, 0x545b6269,
     0x70777e85, 0x8c939aa1, 0xa8afb6bd, 0xc4cbd2d9,
     0xe0e7eef5, 0xfc030a11, 0x181f262d, 0x343b4249,
@@ -41,38 +39,23 @@ vector<u32> CK = {
     0xa0a7aeb5, 0xbcc3cad1, 0xd8dfe6ed, 0xf4fb0209,
     0x10171e25, 0x2c333a41, 0x484f565d, 0x646b7279 };
 
-vector<u32> createRoundKey(const u32(&key)[4])
+std::deque<u32> createRoundKey(const u32(&key)[4])
 {
-    vector<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
+    std::deque<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
     for (int i = 0; i < 32; ++i)
         K.push_back(K[i] ^ T(K[i + 1] ^ K[i + 2] ^ K[i + 3] ^ CK[i], L2));
+    for (int i = 0; i < 4; ++i)
+        K.pop_front();
     return K;
 }
-
-void encrypt(u32(&text)[4], const u32(&key)[4])
+void SM4(u32(&text)[4], const u32(&key)[4], bool encry)
 {
-    vector<u32> X = { text[0], text[1], text[2], text[3] };
-    vector<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
+    std::deque<u32> X = { text[0], text[1], text[2], text[3] };
+    std::deque<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
     auto roundKey = createRoundKey(key);
-    auto iter = roundKey.begin() + 4;
-    for (int i = 0; i < 32; ++i)
-    {
-        auto rK = *iter; ++iter;
-        u32 input4F[4] = { X[i], X[i + 1], X[i + 2], X[i + 3] };
-        X.push_back(F(input4F, rK));
-    }
-    text[0] = X[35];
-    text[1] = X[34];
-    text[2] = X[33];
-    text[3] = X[32];
-}
-
-void decrypt(u32(&text)[4], const u32(&key)[4])
-{
-    vector<u32> X = { text[0], text[1], text[2], text[3] };
-    vector<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
-    auto roundKey = createRoundKey(key);
-    auto iter = roundKey.rbegin();
+    if (!encry)
+        std::reverse(roundKey.begin(), roundKey.end());
+    auto iter = roundKey.begin();
     for (int i = 0; i < 32; ++i)
     {
         auto rK = *iter; ++iter;
@@ -139,12 +122,12 @@ int main()
 {
     u32 array[4] = { 0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210 };
     u32 x[4] = { 0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210 };
-    encrypt(array, x); 
-    decrypt(array, x);
+    SM4(array, x, true);
+    SM4(array, x, false);
     for (auto i : array)
     {
         printf("%x ", i);
     }
-    cout << endl;
+    std::cout << std::endl;
     return 0;
 }
