@@ -45,9 +45,7 @@ vector<u32> createRoundKey(const u32(&key)[4])
 {
     vector<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
     for (int i = 0; i < 32; ++i)
-    {
         K.push_back(K[i] ^ T(K[i + 1] ^ K[i + 2] ^ K[i + 3] ^ CK[i], L2));
-    }
     return K;
 }
 
@@ -114,9 +112,9 @@ u32 Tao(u32 input)
 u32 L1(u32 input)
 {
     u32 output;
-    auto rotateLeft = [](unsigned int val, int size) -> unsigned int
+    auto rotateLeft = [](u32 val, int size) -> u32
     {
-        unsigned int res = val << size;
+        u32 res = val << size;
         res |= val >> (32 - size);
         return res;
     };
