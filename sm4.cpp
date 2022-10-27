@@ -58,9 +58,9 @@ void SM4(u32(&text)[4], const u32(&key)[4], bool encry)
     if (!encry)
         std::reverse(roundKey.begin(), roundKey.end());
     auto iter = roundKey.begin();
-    for (int i = 0; i < 32; ++i)
+    for (int i = 0; i < 32; ++i, ++iter)
     {
-        auto rK = *iter; ++iter;
+        auto rK = *iter;
         u32 input4F[4] = { X[i], X[i + 1], X[i + 2], X[i + 3] };
         X.push_back(F(input4F, rK));
     }
