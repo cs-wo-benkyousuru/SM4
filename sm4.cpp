@@ -1,6 +1,7 @@
 #include <iostream>
 #include <deque>
 
+
 using u8 = unsigned char;
 using u32 = unsigned int;
 u32 F(u32(&input)[4], u32 roundKey);
@@ -9,6 +10,7 @@ u32 Tao(u32 input);
 u32 L1(u32 input);
 u32 L2(u32 input);
 void SM4(u32(&text)[4], const u32(&key)[4], bool encry);
+
 
 std::deque<std::deque<u8>> SBox = {
     {0xd6, 0x90, 0xe9, 0xfe, 0xcc, 0xe1, 0x3d, 0xb7, 0x16, 0xb6, 0x14, 0xc2, 0x28, 0xfb, 0x2c, 0x05},
