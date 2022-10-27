@@ -5,9 +5,9 @@ using namespace std;
 
 using u8 = unsigned char;
 using u32 = unsigned int;
-void encrypt(u32 (&text)[4], const u32 (&key)[4]);
-u32 F(u32 (&input)[4], u32 roundKey);
-u32 T(u32 input, u32 (*L)(u32));
+void encrypt(u32(&text)[4], const u32(&key)[4]);
+u32 F(u32(&input)[4], u32 roundKey);
+u32 T(u32 input, u32(*L)(u32));
 u32 Tao(u32 input);
 u32 L1(u32 input);
 u32 L2(u32 input);
@@ -28,9 +28,9 @@ vector<vector<u8>> SBox = {
     {0x8d, 0x1b, 0xaf, 0x92, 0xbb, 0xdd, 0xbc, 0x7f, 0x11, 0xd9, 0x5c, 0x41, 0x1f, 0x10, 0x5a, 0xd8},
     {0x0a, 0xc1, 0x31, 0x88, 0xa5, 0xcd, 0x7b, 0xbd, 0x2d, 0x74, 0xd0, 0x12, 0xb8, 0xe5, 0xb4, 0xb0},
     {0x89, 0x69, 0x97, 0x4a, 0x0c, 0x96, 0x77, 0x7e, 0x65, 0xb9, 0xf1, 0x09, 0xc5, 0x6e, 0xc6, 0x84},
-    {0x18, 0xf0, 0x7d, 0xec, 0x3a, 0xdc, 0x4d, 0x20, 0x79, 0xee, 0x5f, 0x3e, 0xd7, 0xcb, 0x39, 0x48}};
+    {0x18, 0xf0, 0x7d, 0xec, 0x3a, 0xdc, 0x4d, 0x20, 0x79, 0xee, 0x5f, 0x3e, 0xd7, 0xcb, 0x39, 0x48} };
 
-vector<u32> FK = {0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc};
+vector<u32> FK = { 0xa3b1bac6, 0x56aa3350, 0x677d9197, 0xb27022dc };
 vector<u32> CK = {
     0x00070e15, 0x1c232a31, 0x383f464d, 0x545b6269,
     0x70777e85, 0x8c939aa1, 0xa8afb6bd, 0xc4cbd2d9,
@@ -39,17 +39,28 @@ vector<u32> CK = {
     0xc0c7ced5, 0xdce3eaf1, 0xf8ff060d, 0x141b2229,
     0x30373e45, 0x4c535a61, 0x686f767d, 0x848b9299,
     0xa0a7aeb5, 0xbcc3cad1, 0xd8dfe6ed, 0xf4fb0209,
-    0x10171e25, 0x2c333a41, 0x484f565d, 0x646b7279};
+    0x10171e25, 0x2c333a41, 0x484f565d, 0x646b7279 };
 
-void encrypt(u32 (&text)[4], const u32 (&key)[4])
+vector<u32> createRoundKey(const u32(&key)[4])
 {
-    vector<u32> X = {text[0], text[1], text[2], text[3]};
-    vector<u32> K = {key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3]};
+    vector<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
     for (int i = 0; i < 32; ++i)
     {
-        auto rK = K[i] ^ T(K[i + 1] ^ K[i + 2] ^ K[i + 3] ^ CK[i], L2);
-        K.push_back(rK);
-        u32 input4F[4] = {X[i], X[i + 1], X[i + 2], X[i + 3]};
+        K.push_back(K[i] ^ T(K[i + 1] ^ K[i + 2] ^ K[i + 3] ^ CK[i], L2));
+    }
+    return K;
+}
+
+void encrypt(u32(&text)[4], const u32(&key)[4])
+{
+    vector<u32> X = { text[0], text[1], text[2], text[3] };
+    vector<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
+    auto roundKey = createRoundKey(key);
+    auto iter = roundKey.begin() + 4;
+    for (int i = 0; i < 32; ++i)
+    {
+        auto rK = *iter; ++iter;
+        u32 input4F[4] = { X[i], X[i + 1], X[i + 2], X[i + 3] };
         X.push_back(F(input4F, rK));
     }
     text[0] = X[35];
@@ -58,12 +69,30 @@ void encrypt(u32 (&text)[4], const u32 (&key)[4])
     text[3] = X[32];
 }
 
-u32 F(u32 (&input)[4], u32 roundKey)
+void decrypt(u32(&text)[4], const u32(&key)[4])
+{
+    vector<u32> X = { text[0], text[1], text[2], text[3] };
+    vector<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
+    auto roundKey = createRoundKey(key);
+    auto iter = roundKey.rbegin();
+    for (int i = 0; i < 32; ++i)
+    {
+        auto rK = *iter; ++iter;
+        u32 input4F[4] = { X[i], X[i + 1], X[i + 2], X[i + 3] };
+        X.push_back(F(input4F, rK));
+    }
+    text[0] = X[35];
+    text[1] = X[34];
+    text[2] = X[33];
+    text[3] = X[32];
+}
+
+u32 F(u32(&input)[4], u32 roundKey)
 {
     return input[0] ^ T(input[1] ^ input[2] ^ input[3] ^ roundKey, L1);
 }
 
-u32 T(u32 input, u32 (*L)(u32))
+u32 T(u32 input, u32(*L)(u32))
 {
     return L(Tao(input));
 }
@@ -71,23 +100,23 @@ u32 T(u32 input, u32 (*L)(u32))
 u32 Tao(u32 input)
 {
     u32 output;
-    u8 *A = reinterpret_cast<u8 *>(&input);
+    u8* A = reinterpret_cast<u8*>(&input);
     for (int i = 0; i < 4; ++i)
     {
         auto low8 = A[i] & 0x0f;
         auto high8 = A[i] >> 4;
         A[i] = SBox[high8][low8];
     }
-    output = *(reinterpret_cast<u32 *>(A));
+    output = *(reinterpret_cast<u32*>(A));
     return output;
 }
 
 u32 L1(u32 input)
 {
     u32 output;
-    auto rotateLeft = [](u32 val, int size) -> u32
+    auto rotateLeft = [](unsigned int val, int size) -> unsigned int
     {
-        u32 res = val << size;
+        unsigned int res = val << size;
         res |= val >> (32 - size);
         return res;
     };
@@ -110,9 +139,10 @@ u32 L2(u32 input)
 
 int main()
 {
-    u32 array[4] = {0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210};
-    u32 x[4] = {0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210};
-    encrypt(array, x);
+    u32 array[4] = { 0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210 };
+    u32 x[4] = { 0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210 };
+    encrypt(array, x); 
+    decrypt(array, x);
     for (auto i : array)
     {
         printf("%x ", i);
