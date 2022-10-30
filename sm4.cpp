@@ -6,7 +6,7 @@ using u8 = unsigned char;
 using u32 = unsigned int;
 u32 F(u32(&input)[4], u32 roundKey);
 u32 T(u32 input, u32(*L)(u32));
-u32 Tao(u32 input);
+u32 Tau(u32 input);
 u32 L1(u32 input);
 u32 L2(u32 input);
 void SM4(u32(&text)[4], const u32(&key)[4], bool encry);
@@ -41,6 +41,7 @@ std::deque<u32> CK = {
     0xa0a7aeb5, 0xbcc3cad1, 0xd8dfe6ed, 0xf4fb0209,
     0x10171e25, 0x2c333a41, 0x484f565d, 0x646b7279 };
 
+//生成轮密钥的算法
 std::deque<u32> createRoundKey(const u32(&key)[4])
 {
     std::deque<u32> K = { key[0] ^ FK[0], key[1] ^ FK[1], key[2] ^ FK[2], key[3] ^ FK[3] };
@@ -50,6 +51,8 @@ std::deque<u32> createRoundKey(const u32(&key)[4])
         K.pop_front();
     return K;
 }
+
+//主算法，text为加解密的对象，key为密钥，encry=true代表加密选项
 void SM4(u32(&text)[4], const u32(&key)[4], bool encry)
 {
     std::deque<u32> X = { text[0], text[1], text[2], text[3] };
@@ -70,17 +73,20 @@ void SM4(u32(&text)[4], const u32(&key)[4], bool encry)
     text[3] = X[32];
 }
 
+//迭代的核心算法
 u32 F(u32(&input)[4], u32 roundKey)
 {
     return input[0] ^ T(input[1] ^ input[2] ^ input[3] ^ roundKey, L1);
 }
 
+//合成置换，L是线性变换的函数指针
 u32 T(u32 input, u32(*L)(u32))
 {
-    return L(Tao(input));
+    return L(Tau(input));
 }
 
-u32 Tao(u32 input)
+//非线性变换，映射到S盒
+u32 Tau(u32 input)
 {
     u32 output;
     u8* A = reinterpret_cast<u8*>(&input);
@@ -94,6 +100,7 @@ u32 Tao(u32 input)
     return output;
 }
 
+//迭代中的线性变换
 u32 L1(u32 input)
 {
     u32 output;
@@ -107,6 +114,7 @@ u32 L1(u32 input)
     return output;
 }
 
+//轮密钥生成中的线性变换
 u32 L2(u32 input)
 {
     u32 output;
@@ -122,14 +130,21 @@ u32 L2(u32 input)
 
 int main()
 {
-    u32 array[4] = { 0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210 };
-    u32 x[4] = { 0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210 };
-    SM4(array, x, true);
-    SM4(array, x, false);
-    for (auto i : array)
+    u32 text[4] = { 0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210 };
+    u32 key[4] = { 0x01234567, 0x89abcdef, 0xfedcba98, 0x76543210 };
+    SM4(text, key, true);
+    printf("加密后的密文：\n");
+    for (auto i : text)
     {
         printf("%x ", i);
     }
-    std::cout << std::endl;
+    printf("\n");
+    SM4(text, key, false);
+    printf("解密后的明文：\n");
+    for (auto i : text)
+    {
+        printf("%x ", i);
+    }
+    printf("\n");
     return 0;
 }
